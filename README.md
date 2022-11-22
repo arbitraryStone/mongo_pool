@@ -1,3 +1,8 @@
-# mongo_pool
+## 数据库连接池 
+### Usage
+```go
 
-mongo 数据库连接池
+```
+1. pool := NewPool()
+2. pool.Register...
+3. pool.InitPool()
