@@ -2,7 +2,7 @@
  * @Author: arbitrarystone arbitrarystone@163.com
  * @Date: 2022-11-21 22:25:02
  * @LastEditors: arbitrarystone arbitrarystone@163.com
- * @LastEditTime: 2022-11-22 12:10:00
+ * @LastEditTime: 2022-11-22 22:19:01
  * @FilePath: /dbpool/pool/pool.go
  * @Description: 池化中心
  *
@@ -25,7 +25,6 @@ type Pool struct {
 	lock     sync.RWMutex
 	mode     int //连接池模式
 	ClientGenerator
-	OptionsGenerator
 }
 
 /**
@@ -71,15 +70,6 @@ func (pool *Pool) RegisterClientGenerator(generator ClientGenerator) {
 }
 
 /**
- * @description: 注册客户端配置生成器
- * @param {OptionsGenerator} generator
- * @return {*}
- */
-func (pool *Pool) RegisterOptionsGenerator(generator OptionsGenerator) {
-	pool.OptionsGenerator = generator
-}
-
-/**
  * @description: 初始化连接池
  * @return {error}
  */
@@ -104,7 +94,7 @@ func (pool *Pool) createClient() (Client, error) {
 	if pool.size >= pool.capacity {
 		//池满后可以新建连接, 新建连接不受连接池管理, 使用完会立即关闭, 不会再放入连接池重用
 		if pool.mode == PoolGetModeLoose {
-			client, err := pool.ClientGenerator.Generator()
+			client, err := pool.ClientGenerator()
 			if err != nil {
 				return nil, ErrCreateClient
 			}
@@ -113,7 +103,7 @@ func (pool *Pool) createClient() (Client, error) {
 		return nil, ErrPoolIsFull
 	}
 	//池未满时，创建客户端
-	client, err := pool.ClientGenerator.Generator()
+	client, err := pool.ClientGenerator()
 	if err != nil {
 		return nil, ErrCreateClient
 	}
