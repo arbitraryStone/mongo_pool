@@ -11,6 +11,7 @@
 package pool
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -94,7 +95,7 @@ func (pool *Pool) createClient() (Client, error) {
 	if pool.size >= pool.capacity {
 		//池满后可以新建连接, 新建连接不受连接池管理, 使用完会立即关闭, 不会再放入连接池重用
 		if pool.mode == PoolGetModeLoose {
-			client, err := pool.ClientGenerator()
+			client, err := pool.ClientGenerator.Generator()
 			if err != nil {
 				return nil, ErrCreateClient
 			}
@@ -103,7 +104,7 @@ func (pool *Pool) createClient() (Client, error) {
 		return nil, ErrPoolIsFull
 	}
 	//池未满时，创建客户端
-	client, err := pool.ClientGenerator()
+	client, err := pool.ClientGenerator.Generator()
 	if err != nil {
 		return nil, ErrCreateClient
 	}
@@ -147,6 +148,7 @@ func (pool *Pool) Close() {
 		for {
 			select {
 			case client := <-pool.clients:
+				pool.decIdle()
 				client.Release()
 			case <-t.C:
 				if len(pool.clients) <= 0 {
@@ -176,4 +178,20 @@ func (pool *Pool) incIdle() {
 
 func (pool *Pool) decIdle() {
 	atomic.AddInt32(&pool.idle, -1)
+}
+
+func (pool *Pool) Size() int32 {
+	return pool.size
+}
+
+func (pool *Pool) Idle() int32 {
+	return pool.idle
+}
+func (pool *Pool) Capacity() int32 {
+	return pool.capacity
+}
+
+func (pool *Pool) Dump() {
+	fmt.Printf("pool.size:%d pool.idle:%d pool.capacity:%d\n",
+		pool.Size(), pool.Idle(), pool.Capacity())
 }

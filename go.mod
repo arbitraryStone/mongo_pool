@@ -2,7 +2,7 @@ module github.com/arbitrarystone/dbpool
 
 go 1.17
 
-require go.mongodb.org/mongo-driver v1.11.0
+require go.mongodb.org/mongo-driver v1.10.2
 
 require (
 	github.com/golang/snappy v0.0.1 // indirect

@@ -2,7 +2,7 @@
  * @Author: arbitrarystone arbitrarystone@163.com
  * @Date: 2022-11-21 22:21:45
  * @LastEditors: arbitrarystone arbitrarystone@163.com
- * @LastEditTime: 2022-11-22 19:25:12
+ * @LastEditTime: 2022-11-22 18:45:04
  * @FilePath: /dbpool/pool/client.go
  * @Description: mongodb客户端
  *
@@ -10,10 +10,11 @@
  */
 package pool
 
-type ClientGenerator func() (Client, error)
-
+type ClientGenerator interface {
+	Generator() (Client, error)
+}
 type Client interface {
 	Close()
 	Release()
-	SetPool(*Pool)
+	SetPool(p *Pool)
 }

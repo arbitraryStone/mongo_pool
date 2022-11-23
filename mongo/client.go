@@ -2,9 +2,9 @@
  * @Author: arbitrarystone arbitrarystone@163.com
  * @Date: 2022-11-22 10:01:39
  * @LastEditors: arbitrarystone arbitrarystone@163.com
- * @LastEditTime: 2022-11-22 23:29:09
+ * @LastEditTime: 2022-11-23 16:01:07
  * @FilePath: /dbpool/mongo/client.go
- * @Description:
+ * @Description:mongo客户端
  *
  * Copyright (c) 2022 by arbitrarystone arbitrarystone@163.com, All Rights Reserved.
  */
@@ -12,12 +12,14 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/arbitrarystone/dbpool/pool"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 type MongoClient struct {
@@ -30,15 +32,27 @@ type MongoClient struct {
 	opts        *MongoClientOptions
 }
 
+type MongoClientGenerator struct {
+	url string
+}
+
+/**
+ * @description: 创建索引参数定义
+ */
+type params struct {
+	key   string
+	value int32
+}
+
 /**
  * @description: mongo客户端生成器
  * @param {string} url
  * @return {*}
  */
-func MongoClientGenerator(url string) (*MongoClient, error) {
+func (g MongoClientGenerator) Generator() (pool.Client, error) {
 	client := new(MongoClient)
 	//获取配置生成器
-	opts, err := MongoClientOptionsGenerator(url)
+	opts, err := MongoClientOptionsGenerator(g.url)
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +66,10 @@ func MongoClientGenerator(url string) (*MongoClient, error) {
 	}
 	client.client = c
 	return client, nil
+}
+
+func NewGenerator(url string) *MongoClientGenerator {
+	return &MongoClientGenerator{url: url}
 }
 
 /**
@@ -81,6 +99,7 @@ func (c *MongoClient) Close() {
  * @return {*}
  */
 func (c *MongoClient) Release() {
+	fmt.Printf("release\n")
 	c.client.Disconnect(context.TODO())
 	if c.pool != nil {
 		c.pool.DecSize()
@@ -98,6 +117,12 @@ func (c *MongoClient) SetPool(p *pool.Pool) {
 	c.pool = p
 }
 
+/***
+ * @description: 获取集合
+ * @param {string} dbName
+ * @param {string} collectionName
+ * @return {*}
+ */
 func (c *MongoClient) GetCollection(dbName string, collectionName string) *mongo.Collection {
 	v, ok := c.collections.Load(dbName)
 	if ok {
@@ -120,6 +145,11 @@ func (c *MongoClient) GetCollection(dbName string, collectionName string) *mongo
 	return coll
 }
 
+/***
+ * @description: 获取数据库
+ * @param {string} dbName
+ * @return {*}
+ */
 func (c *MongoClient) GetDB(dbName string) *mongo.Database {
 	v, ok := c.dbs.Load(dbName)
 	if ok {
@@ -172,9 +202,33 @@ func (c *MongoClient) InsertMany(dbName string, collectionName string,
 	return coll.InsertMany(context.TODO(), data)
 }
 
+/***
+ * @description: 获取集合文档
+ * @param {string} dbName
+ * @param {string} collectionName
+ * @return {*}
+ */
 func (c *MongoClient) GetCount(dbName string, collectionName string) (int64, error) {
 	coll := c.GetCollection(dbName, collectionName)
 	return coll.CountDocuments(context.TODO(), bson.D{})
 }
 
-func (c *MongoClient) CreateIndex(dbName string, collectionName string) {}
+/***
+ * @description: 创建索引
+ * @param {*MongoClient} c
+ * @return {*}
+ */
+func (c *MongoClient) CreateIndex(dbName string, collectionName string, options *options.IndexOptions,
+	params ...*params) (string, error) {
+
+	coll := c.GetCollection(dbName, collectionName)
+	doc := bsonx.Doc{}
+	for _, param := range params {
+		doc.Append(param.key, bsonx.Int32(param.value))
+	}
+	idx := mongo.IndexModel{
+		Keys:    doc,
+		Options: options,
+	}
+	return coll.Indexes().CreateOne(context.TODO(), idx)
+}
