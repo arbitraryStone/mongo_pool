@@ -12,7 +12,6 @@ package mongo
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/arbitrarystone/dbpool/pool"
@@ -99,7 +98,6 @@ func (c *MongoClient) Close() {
  * @return {*}
  */
 func (c *MongoClient) Release() {
-	fmt.Printf("release\n")
 	c.client.Disconnect(context.TODO())
 	if c.pool != nil {
 		c.pool.DecSize()

@@ -25,15 +25,12 @@ type Pool struct {
 	capacity int32 //连接池最大容纳客户端数
 	lock     sync.RWMutex
 	mode     int //连接池模式
+	dbName   string
 	ClientGenerator
 }
 
-/**
- * @description: 默认连接池 初始化客户端数：5 最大容量：10 模式：池满后不会新增
- * @return {pool实例指针 错误信息}
- */
-func DefaultPool() (*Pool, error) {
-	return NewPool(5, 10, PoolGetModeStrict)
+func (pool *Pool) GetDBName() string {
+	return pool.dbName
 }
 
 /**
@@ -43,7 +40,7 @@ func DefaultPool() (*Pool, error) {
  * @param {int} mode 连接池在池满时的连接状态(池满后继续创建 or 池满后不继续创建连接)
  * @return {*Pool, error} 创建的连接实例, 错误信息
  */
-func NewPool(init int32, cap int32, mode int) (*Pool, error) {
+func NewPool(dbName string, init int32, cap int32, mode int) (*Pool, error) {
 	if init < 0 || cap <= 0 {
 		return nil, ErrPoolInit
 	}
@@ -56,6 +53,7 @@ func NewPool(init int32, cap int32, mode int) (*Pool, error) {
 		idle:     0,
 		size:     0,
 		capacity: cap,
+		dbName:   dbName,
 		mode:     mode,
 	}
 	return pool, nil

@@ -12,91 +12,83 @@ package main
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
+	"github.com/arbitrarystone/dbpool"
 	"github.com/arbitrarystone/dbpool/mongo"
 	"github.com/arbitrarystone/dbpool/pool"
 )
 
-func main() {
-	p, err := pool.NewPool(5, 10, pool.PoolGetModeStrict)
+func MongoClientTest() {
+	url := "mongodb://localhost:27017"
+	g := mongo.NewGenerator(url)
+	c, err := g.Generator()
 	if err != nil {
-		panic("new pool error")
+		panic(err)
 	}
-	g := mongo.NewGenerator("mongodb://localhost:27017")
-	p.RegisterClientGenerator(g)
-	if err := p.InitPool(); err != nil {
-		fmt.Errorf("%s", err.Error())
-		panic("init pool error")
+	v := c.(*mongo.MongoClient)
+	count, err := v.GetCount("FilmDB", "area")
+	if err != nil {
+		panic(err)
 	}
-	wg := sync.WaitGroup{}
-	wg.Add(4)
+	fmt.Printf("get count:%d", count)
+}
+
+func main() {
+	p, err := dbpool.NewPool("mongo", "mongodb://localhost:27017", 1, 10, pool.PoolGetModeStrict)
+	if err != nil {
+		panic(err)
+	}
 	//获取连接
 	go func() {
-		for i := 0; i < 1000; i++ {
-			client, err := p.Get(2 * time.Second)
+		for {
+			client, err := dbpool.GetMongoClient(p, 1*time.Second)
 			if err != nil {
-				fmt.Printf("get mongo client error:%v\n", err)
 				continue
 			}
-			v, ok := client.(*mongo.MongoClient)
-			if !ok {
-				panic("client type error")
-			}
-			_, err = v.GetCount("FilmDB", "area")
+			_, err = client.GetCount("FilmDB", "area")
 			if err != nil {
 				fmt.Printf("get count error:%v", err)
 				return
 			}
-			//fmt.Printf("count:%d\n", count)
-			//time.Sleep(1000 * time.Millisecond)
 			client.Close()
 		}
-		wg.Done()
 	}()
 	//获取连接
 	go func() {
-		for i := 0; i < 1000; i++ {
-			client, err := p.Get(2 * time.Second)
+		for {
+			client, err := dbpool.GetMongoClient(p, 1*time.Second)
 			if err != nil {
-				fmt.Printf("get mongo client error:%v\n", err)
 				continue
 			}
-			v, ok := client.(*mongo.MongoClient)
-			if !ok {
-				panic("client type error")
-			}
-			_, err = v.GetCount("FilmDB", "area")
+			_, err = client.GetCount("FilmDB", "area")
 			if err != nil {
 				fmt.Printf("get count error:%v", err)
 				return
 			}
-			//time.Sleep(1000 * time.Millisecond)
 			client.Close()
 		}
-		wg.Done()
 	}()
 	//打印连接数
 	go func() {
-		for i := 0; i < 1000; i++ {
+		for {
 			p.Dump()
 			time.Sleep(2 * time.Second)
 		}
-		wg.Done()
 	}()
 	//释放连接
 	go func() {
-		for i := 0; i < 1000; i++ {
-			time.Sleep(10 * time.Second)
+		for {
+			time.Sleep(20 * time.Second)
 			c, err := p.Get(2 * time.Second)
 			if err != nil {
 				fmt.Printf("get mongo client error:%v\n", err)
 				continue
 			}
+			fmt.Printf("release")
 			c.Release()
 		}
-		wg.Done()
 	}()
-	wg.Wait()
+	for {
+	}
 }

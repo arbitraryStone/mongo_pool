@@ -28,7 +28,7 @@ type AreaInfo struct {
 
 func main() {
 	//新建连接池
-	p, err := pool.NewPool(5, 10, pool.PoolGetModeStrict)
+	p, err := pool.NewPool("mongo", 5, 10, pool.PoolGetModeStrict)
 	if err != nil {
 		panic("new pool error")
 	}
@@ -39,7 +39,6 @@ func main() {
 	p.RegisterClientGenerator(g)
 	//初始化连接池
 	if err := p.InitPool(); err != nil {
-		fmt.Errorf("%s", err.Error())
 		panic("init pool error")
 	}
 	//获取客户端连接
